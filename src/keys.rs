@@ -9,7 +9,40 @@ pub struct Key {
 }
 
 impl Key {
-    pub fn encrypt(&self, t: u64) -> u64 {
+    
+    pub fn encrypt_str(&self, s: String) -> String {
+        let mut bytes = s.into_bytes();
+        let mut result: Vec<u64> = Vec::new();
+    
+        let mut temp: u64;
+        let mut buff: u64 = 0;
+        for (i, byte) in bytes.iter().enumerate() {
+            //println!("{:#X}", *byte);
+            temp = (*byte as u64) << ((3-(i%4))*8);
+            //println!("{:#X}", temp);
+            buff = temp | buff;
+            //println!("buff: {:#X}", buff);
+            if (3-(i%4)) == 0 {
+                result.push(self.encrypt64(buff));
+                buff = 0;
+            }
+        }
+
+        let mut temp8: u8;
+        for (i, word) in result.iter_mut().enumerate() {
+            for n in 0..3 {
+                temp8 = ((*word & (0xFF << ((3-n)*8))) >> ((3-n)*8)) as u8;
+                println!("{:X}", temp8);
+                bytes[i*4 + n] = temp8;
+            }
+        }
+
+        println!("{:X?}", bytes);
+        
+        String::from_utf8(bytes).ok().expect("Failed to convert to UTF8.")
+    }
+
+    pub fn encrypt64(&self, t: u64) -> u64 {
         let exp_table:[u64; 64] = self.gen_table(t);
         let mut acc: u64 = 1;
         let mut idx: u64 = self.exp;
@@ -31,6 +64,7 @@ impl Key {
         }
         table
     }
+
 }
 
 pub struct KeyPair {
