@@ -1,17 +1,16 @@
-mod keyGen;
-use crate::keys::KeyPair;
+use crate::keys::{KeyPairGenerate, KeyPair, Key};
 pub mod keys;
 
 
 fn main() {
-    let pair: KeyPair = keyGen::Generate();
-
+    let pair: KeyPair = KeyPairGenerate::new();
+    pair.calcExponents();
     
     let t: u64 = 855;
-    test(t);
+  //  test(t);
 
     let n: u32 = 121;
-    test(t);
+//    test(t);
     
     let c: u64 = pair.pkey.encrypt(t);
     println!("{}", c);
@@ -19,7 +18,7 @@ fn main() {
 
 }
 
-fn test(n: usize) {
-    prinln!("{}", size_of(usize));
-    prinln!("{}", size_of(n));
-}
+// fn test(n: usize) {
+   // prinln!("{}", size_of(usize));
+    //prinln!("{}", size_of(n));
+//}

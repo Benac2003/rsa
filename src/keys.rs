@@ -2,6 +2,9 @@
     Key Pair Usage
 */
 
+use std::ptr::null;
+
+use rand::Rng;
 
 pub struct Key {
     pub n: u64,
@@ -38,23 +41,43 @@ pub struct KeyPair {
     pub pkey: Key,
 }
 
-impl KeyPair {
+pub trait KeyPairGenerate {
+    fn calcExponents(&self) -> (u64, u64, u64, u64);
+
+    fn RandInitExponents(&self) -> (u64, u64);
+
+    fn Gcd(&self, first: u64, second: u64) -> u64;
+    
+    fn findE(&self, m: u64) -> u64;
+
+    fn new () -> Self;
+}
+
+impl KeyPairGenerate for KeyPair {
+
     fn new () -> Self {
-    let p: u64 = 61;
-    let q: u64 = 53;
-    let n: u64 = q * p;
-    let m: u64 = (p - 1) * (q - 1);
-    let e: u64 = findE(m);
-    let d: u64 = (1 + n * m) / e;
-
-    println!("{:?}", (d, e, m, n));
-    }
-
-    fn RandExponents() {
+        KeyPair {skey: Key { n: 0, exp: 0}, pkey: Key {n: 0, exp: 0}}
 
     }
 
-    fn Gcd(first: usize, second: usize) -> usize {
+    fn calcExponents(&self) -> (u64, u64, u64, u64) {
+        print!("Calculating Exponents of KeyPair...");
+        let (p, q) = self.RandInitExponents();
+        let n: u64 = q * p;
+        let m: u64 = (p - 1) * (q - 1);
+        let e: u64 = self.findE(m);
+        let d: u64 = (1 + n * m) / e;
+        println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
+        (d, e, m, n)
+    }
+
+    fn RandInitExponents(&self) -> (u64, u64) {
+        let mut rng = rand::thread_rng();
+        (rng.gen_range(0..10), rng.gen_range(0..10))
+    }
+
+
+    fn Gcd(&self, first: u64, second: u64) -> u64 {
         let mut max = first;
         let mut min = second;
         if min > max {
@@ -74,14 +97,13 @@ impl KeyPair {
         }
     }
     
-    fn findE(m: u64) -> u64 {
+    fn findE(&self, m: u64) -> u64 {
         // let e: Vec<u64> = range(2, m);
         for n in 2..m {
-            if Gcd(n, m) == 1 {
+            if self.Gcd(n, m) == 1 {
                 return n;
             }
         }
         return 1;
     }
-
 }
