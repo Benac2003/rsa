@@ -1,4 +1,4 @@
-use crate::keys::{KeyPair};
+use crate::keys::{KeyPair, Key};
 pub mod keys;
 
 
@@ -10,8 +10,8 @@ fn main() {
     let n: u32 = 121;
 //    test(t);
     
-    //let c: u64 = pair.pkey.encrypt64(t);
-  //  println!("{}", c);
+    let c: u64 = pair.pkey.encrypt64(t);
+    println!("{}", c);
 
 
 }
