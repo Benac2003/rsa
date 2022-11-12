@@ -89,24 +89,24 @@ impl KeyPair {
     fn calc_exponents(&self) -> (u64, u64, u64, u64) {
         print!("Calculating Exponents of KeyPair...");
         let (p, q) = self.rand_init_exponents();
-        let n: u64 = q * p;
-        let m: u64 = (p -1) * (q -1);
+        let n: u64 = q as u64 * p as u64;
+        let m: u64 = (p -1) as u64 * (q -1) as u64;
         let e: u64 = self.find_e(m);
         let d: u64 = (1 + n * m) / e;
         println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
         (d, e, m, n)
     }
 
-    fn rand_init_exponents(&self) -> (u64, u64) {
-        let mut exps: [u64; 2] = [0 , 0];
+    fn rand_init_exponents(&self) -> (u32, u32) {
+        let mut exps: [u32; 2] = [0 , 0];
         let mut rng = rand::thread_rng();
-        let mut n:u64;
+        let mut n: u32;
         let mut i = 0;
         
 
         while i < 2 {
-            n = rng.gen_range(1..9999);
-            if self.is_prime(n) {
+            n = rng.gen_range(1..(std::u16::MAX)) as u32;
+            if self.is_prime(n as u64) {
                 exps[i] = n;
                 i+=1;
             }
@@ -114,7 +114,7 @@ impl KeyPair {
         (exps[0] , exps[1])
     }
 
-    fn is_prime(&self, n:u64) -> bool {
+    fn is_prime(&self, n: u64) -> bool {
         if n == 2 || n == 3 {
             return true;
         }
