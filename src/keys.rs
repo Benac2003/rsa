@@ -2,7 +2,6 @@
     Key Pair Usage
 */
 
-use std::ptr::null;
 use rand::Rng;
 
 pub struct Key {
@@ -82,23 +81,23 @@ impl KeyPair {
 
     }
 
-    pub fn Generate(&self) -> Self {
-        let (d, e, m, n) = self.calcExponents();
+    pub fn generate(&self) -> Self {
+        let (d, e, _m, n) = self.calc_exponents();
         KeyPair {skey: Key { n, exp: e}, pkey: Key {n, exp: d}}
     }
 
-    fn calcExponents(&self) -> (u64, u64, u64, u64) {
+    fn calc_exponents(&self) -> (u64, u64, u64, u64) {
         print!("Calculating Exponents of KeyPair...");
-        let (p, q) = self.RandInitExponents();
+        let (p, q) = self.rand_init_exponents();
         let n: u64 = q * p;
         let m: u64 = (p -1) * (q -1);
-        let e: u64 = self.findE(m);
+        let e: u64 = self.find_e(m);
         let d: u64 = (1 + n * m) / e;
         println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
         (d, e, m, n)
     }
 
-    fn RandInitExponents(&self) -> (u64, u64) {
+    fn rand_init_exponents(&self) -> (u64, u64) {
         let mut exps: [u64; 2] = [0 , 0];
         let mut rng = rand::thread_rng();
         let mut n:u64;
@@ -107,7 +106,7 @@ impl KeyPair {
 
         while i < 2 {
             n = rng.gen_range(1..9999);
-            if self.isPrime(n) {
+            if self.is_prime(n) {
                 exps[i] = n;
                 i+=1;
             }
@@ -115,7 +114,7 @@ impl KeyPair {
         (exps[0] , exps[1])
     }
 
-    fn isPrime(&self, n:u64) -> bool {
+    fn is_prime(&self, n:u64) -> bool {
         if n == 2 || n == 3 {
             return true;
         }
@@ -132,7 +131,7 @@ impl KeyPair {
         return true;
     }
 
-    fn Gcd(&self, first: u64, second: u64) -> u64 {
+    fn gcd(&self, first: u64, second: u64) -> u64 {
         let mut max = first;
         let mut min = second;
         if min > max {
@@ -152,10 +151,10 @@ impl KeyPair {
         }
     }
         
-    fn findE(&self, m: u64) -> u64 {
+    fn find_e(&self, m: u64) -> u64 {
         // let e: Vec<u64> = range(2, m);
         for n in 2..m {
-            if self.Gcd(n, m) == 1 {
+            if self.gcd(n, m) == 1 {
                 return n;
             }
         }
