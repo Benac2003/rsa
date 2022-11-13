@@ -134,10 +134,10 @@ impl KeyPair {
         for i in (2..1000).step_by(2) {
             n = i* u + 1;
             if self.isPrime(n) {
-                break;
+                return n;
             }
         }
-        n
+        panic!("RandPrime: Iteration has reached limit!!")
     }
     
     fn isPrime(&self, n:u64) -> bool {
