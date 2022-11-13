@@ -43,6 +43,10 @@ impl Key {
         String::from_utf8(bytes).ok().expect("Failed to convert to UTF8.")
     }
 
+    pub fn decrypt64(&self, t: u64) -> u64 {
+        self.encrypt64(t)
+    }
+
     pub fn encrypt64(&self, t: u64) -> u64 {
         let exp_table:[u64; 64] = self.gen_table(t);
         let mut acc: u64 = 1;
@@ -87,7 +91,7 @@ impl KeyPair {
     }
 
     fn calc_exponents(&self) -> (u64, u64, u64, u64) {
-        print!("Calculating Exponents of KeyPair...");
+        //print!("Calculating Exponents of KeyPair...");
         let (p, q) = self.rand_init_exponents();
         let n: u64 = q as u64 * p as u64;
         let m: u64 = (p -1) as u64 * (q -1) as u64;
@@ -111,6 +115,7 @@ impl KeyPair {
                 i+=1;
             }
         }        
+        print!("{} {}", exps[0], exps[1]);
         (exps[0] , exps[1])
     }
 
