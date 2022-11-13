@@ -4,6 +4,7 @@
 
 
 use core::panic;
+use std::collections::btree_map::Range;
 
 use rand::Rng;
 
@@ -124,11 +125,10 @@ impl KeyPair {
 
     fn RandPrime(&self) -> u64 {
         let mut u:u64 = 0;
-        let mut rng = rand::thread_rng();
         let mut n: u64 = 0;
 
         while !self.isPrime(u) {
-            u = rng.gen_range(100..1000);
+            u = rand::thread_rng().gen_range(1000..3000);
         }
         
         for i in (2..1000).step_by(2) {
@@ -178,12 +178,13 @@ impl KeyPair {
     }
         
     fn findE(&self, m: u64) -> u64 {
-        // let e: Vec<u64> = range(2, m);
+        let mut e:u64;
         for n in 2..m {
-            if self.Gcd(n, m) == 1 {
-                return n;
+            e = rand::thread_rng().gen_range(2..m);
+            if self.Gcd(e, m) == 1 {
+                return e;
             }
         }
-        return 1;
+        panic!("Can't Find E!!");
     }
 }
