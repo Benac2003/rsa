@@ -78,7 +78,7 @@ impl Key {
     pub fn decrypt_str(&self, s: String) -> String {
         let cipher = decode(s).unwrap();
 
-        let bytes = self.encrypt_bytes(cipher);
+        let _bytes = self.encrypt_bytes(cipher);
 
         String::from("pass")
     }
