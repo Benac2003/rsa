@@ -97,13 +97,13 @@ impl KeyPair {
         let n: u64 = q * p;
         let m: u64 = (q -1) * (p -1);
         let e: u64 = self.findE(m);
-        let d = self.ExtGcd(e, m);
+        let d = self.ExtGcd(&e, &m);
         println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
         (d, e, m, n)
     }
 
-    fn ExtGcd(&self, a: u64, b: u64) -> u64 {
-        let (mut a, mut b) = (i64::try_from(a).unwrap(), i64::try_from(b).unwrap());
+    fn ExtGcd(&self, a: &u64, b: &u64) -> u64 {
+        let (mut a, mut b) = (i64::try_from(*a).unwrap(), i64::try_from(*b).unwrap());
         let mut x: [i64; 2] = [0, 1];
         let mut y: [i64; 2] = [1, 0];
         let mut q: i64;
@@ -123,12 +123,17 @@ impl KeyPair {
         u64::try_from(x[0]).unwrap()
     }
 
-    fn RandPrime(&self) -> u64 {
+    fn getPQ(&self) -> u64 {
+        let mut rand = &rand::thread_rng();
+        (self.RandPrime(rand), self.RandPrime(rand))
+    }
+
+    fn RandPrime(&self, &rand) -> u64 {
         let mut u:u64 = 0;
         let mut n: u64 = 0;
 
         while !self.isPrime(u) {
-            u = rand::thread_rng().gen_range(1000..3000);
+            u = rand.gen_range(1000..3000);
         }
         
         for i in (2..1000).step_by(2) {
