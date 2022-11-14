@@ -4,7 +4,9 @@
 
 
 extern crate base64;
-use base64::{encode};
+use base64::{encode, decode};
+use std::io::{Write, Read};
+use std::fs::{File};
 use rand::Rng;
 
 pub struct Key {
@@ -13,35 +15,72 @@ pub struct Key {
 }
 
 impl Key {
+
+    pub fn from_file(filename: &str) -> Self {
+        let mut keyfile = File::open(filename).ok().expect("Key File not found.");
+        let mut keystring = String::new();
+        let _read_bytes = keyfile.read_to_string(&mut keystring).ok();
+        let keybytes = decode(keystring).unwrap();
+
+
+        let mut expbytes: [u8; 8] = [0; 8];
+        expbytes.clone_from_slice(&keybytes[0..8]);
+        let exp: u64 = u64::from_ne_bytes(expbytes);
+
+        let mut modbytes: [u8; 8] = [0; 8];
+        modbytes.clone_from_slice(&keybytes[8..16]);
+        let n: u64 = u64::from_ne_bytes(modbytes);
+
+        Key { n, exp }
+    }
     
     pub fn encrypt_str(&self, s: String) -> String {
-        let mut bytes = s.into_bytes();
-        let mut result: Vec<u64> = Vec::new();
+        let bytes = self.encrypt_bytes(s.into_bytes());
+        encode(&bytes)
+    }
+
+    pub fn encrypt_bytes(&self, bytes: Vec<u8>) -> Vec<u8> {
+        println!("original chars: {:X?}", bytes);
+
+        let mut words: Vec<u64> = Vec::new();
     
-        let mut temp: u64;
+        // Build a vector of encrypted words
         let mut buff: u64 = 0;
         for (i, byte) in bytes.iter().enumerate() {
-            //println!("{:#X}", *byte);
-            temp = (*byte as u64) << ((3-(i%4))*8);
-            //println!("{:#X}", temp);
-            buff = temp | buff;
-            //println!("buff: {:#X}", buff);
-            if (3-(i%4)) == 0 {
-                result.push(self.encrypt64(buff));
-                buff = 0;
+            buff |= (*byte as u64) << ((3-(i%4))*8);
+            if (3 - (i % 4)) == 0 || i == (bytes.len() - 1) { // every forth byte...
+                words.push(buff); // encrypt 64-bit word and push to words
+                buff = 0; // reset buffer
             }
         }
 
+        println!("original words: {:X?}", words);
+        for word in &mut words {
+            *word = self.encrypt64(*word);
+        }
+        println!("encrypted words {:X?}", words);
+
+        let mut chars: Vec<u8> = Vec::with_capacity(words.len()*4);
         let mut temp8: u8;
-        for (i, word) in result.iter_mut().enumerate() {
-            for n in 0..3 {
+        for (i, word) in words.iter().enumerate() {
+            for n in 0..4 {
+                chars.push(0);
                 temp8 = ((*word & (0xFF << ((3-n)*8))) >> ((3-n)*8)) as u8;
-                println!("{:X}", temp8);
-                bytes[i*4 + n] = temp8;
+                chars[i*4 + n] = temp8;
             }
         }
 
-        encode(&bytes)
+        println!("encrypted chars: {:X?}", chars);
+
+        return chars;
+    }
+
+    pub fn decrypt_str(&self, s: String) -> String {
+        let cipher = decode(s).unwrap();
+
+        let bytes = self.encrypt_bytes(cipher);
+
+        String::from("pass")
     }
 
     pub fn decrypt64(&self, t: u64) -> u64 {
@@ -50,16 +89,16 @@ impl Key {
 
     pub fn encrypt64(&self, t: u64) -> u64 {
         let exp_table:[u64; 64] = self.gen_table(t);
-        let mut acc: u64 = 1;
+        let mut acc: u128 = 1;
         let mut idx: u64 = self.exp;
         for i in 0..64 {
             if (idx & 1) == 1 {
-                acc = (acc * exp_table[i]) % self.n;
+                acc = (acc * exp_table[i] as u128) % self.n as u128;
             }
             idx = idx >> 1;
         }
 
-        acc
+        acc as u64
     }
 
     fn gen_table(&self, t: u64) -> [u64; 64] {
@@ -68,8 +107,30 @@ impl Key {
         for i in 1..64 {
             table[i] = (table[i-1].pow(2)) % self.n;
         }
-        table
+        return table;
     }
+
+    pub fn write_to_file(&self, filename: &str) -> usize {
+        // let mut keyfile = base64::write::EncoderWriter::new(File::create(filename).unwrap(), base64::STANDARD);
+        let mut keyfile = File::create(filename).ok().expect("Filepath incorrect.");
+        keyfile.write(&mut self.dump_key_base64().as_bytes()).unwrap()
+    }
+
+    pub fn dump_key_bytes(&self) -> [u8; 16] {
+        let expbytes: [u8; 8 * 1] = self.exp.to_ne_bytes();
+        let modbytes: [u8; 8 * 1] = self.n.to_ne_bytes();
+
+        let mut keybytes: [u8; 8 * 2] = [0; 8 * 2];
+        keybytes[0..8].copy_from_slice(&expbytes);
+        keybytes[8..].copy_from_slice(&modbytes);
+
+        keybytes
+    }
+
+    pub fn dump_key_base64(&self) -> String {
+        encode(&self.dump_key_bytes())
+    }
+
 
 }
 
