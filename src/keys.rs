@@ -2,6 +2,8 @@
     Key Pair Usage
 */
 
+extern crate base64;
+use base64::{encode};
 use rand::Rng;
 
 pub struct Key {
@@ -38,9 +40,7 @@ impl Key {
             }
         }
 
-        println!("{:X?}", bytes);
-        
-        String::from_utf8(bytes).ok().expect("Failed to convert to UTF8.")
+        encode(&bytes)
     }
 
     pub fn decrypt64(&self, t: u64) -> u64 {
