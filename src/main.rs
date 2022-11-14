@@ -4,20 +4,13 @@ pub mod keys;
 
 fn main() {
     let pair: KeyPair = KeyPair::new().Generate();
-    let t: u64 = 123;
-  //  test(t);
 
-    let n: u32 = 121;
-//    test(t);
+    let a: u64 = 855;
     
-    let c: u64 = pair.skey.encrypt64(t);
-    println!("{}", c);
-    let p = pair.pkey.encrypt64(c);
-    println!("{}", p);
+    let b: u64 = pair.pkey.encrypt64(a);
 
+    let c: u64 = pair.skey.decrypt64(b);
+
+    print!(" {}\n", a == c);
 }
 
-// fn test(n: usize) {
-   // prinln!("{}", size_of(usize));
-    //prinln!("{}", size_of(n));
-//}

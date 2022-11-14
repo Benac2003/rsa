@@ -3,9 +3,8 @@
 */
 
 
-use core::panic;
-use std::collections::btree_map::Range;
-
+extern crate base64;
+use base64::{encode};
 use rand::Rng;
 
 pub struct Key {
@@ -42,9 +41,11 @@ impl Key {
             }
         }
 
-        println!("{:X?}", bytes);
-        
-        String::from_utf8(bytes).ok().expect("Failed to convert to UTF8.")
+        encode(&bytes)
+    }
+
+    pub fn decrypt64(&self, t: u64) -> u64 {
+        self.encrypt64(t)
     }
 
     pub fn encrypt64(&self, t: u64) -> u64 {
@@ -86,23 +87,23 @@ impl KeyPair {
 
     }
 
-    pub fn Generate(&self) -> Self {
-        let (d, e, m, n) = self.calcExponents();
+    pub fn generate(&self) -> Self {
+        let (d, e, _m, n) = self.calc_exponents();
         KeyPair {skey: Key { n, exp: e}, pkey: Key {n, exp: d}}
     }
 
-    fn calcExponents(&self) -> (u64, u64, u64, u64) {
-        print!("Calculating Exponents of KeyPair...\n");
-        let (p, q) = (self.RandPrime(), self.RandPrime());
+    fn calc_exponents(&self) -> (u64, u64, u64, u64) {
+        //print!("Calculating Exponents of KeyPair...");
+        let (p, q) = (self.rand_prime(), self.rand_prime());
         let n: u64 = q * p;
         let m: u64 = (q -1) * (p -1);
         let e: u64 = self.findE(m);
-        let d = self.ExtGcd(e, m);
+        let d = self.ext_gcd(e, m);
         println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
         (d, e, m, n)
     }
 
-    fn ExtGcd(&self, a: u64, b: u64) -> u64 {
+    fn ext_gcd(&self, a: u64, b: u64) -> u64 {
         let (mut a, mut b) = (i64::try_from(a).unwrap(), i64::try_from(b).unwrap());
         let mut x: [i64; 2] = [0, 1];
         let mut y: [i64; 2] = [1, 0];
@@ -123,7 +124,7 @@ impl KeyPair {
         u64::try_from(x[0]).unwrap()
     }
 
-    fn RandPrime(&self) -> u64 {
+    fn rand_prime(&self) -> u64 {
         let mut u:u64 = 0;
         let mut n: u64 = 0;
 
@@ -140,7 +141,7 @@ impl KeyPair {
         panic!("RandPrime: Iteration has reached limit!!")
     }
     
-    fn isPrime(&self, n:u64) -> bool {
+    fn is_prime(&self, n: u64) -> bool {
         if n == 2 || n == 3 {
             return true;
         }
@@ -157,7 +158,7 @@ impl KeyPair {
         return true;
     }
 
-    fn Gcd(&self, first: u64, second: u64) -> u64 {
+    fn gcd(&self, first: u64, second: u64) -> u64 {
         let mut max = first;
         let mut min = second;
         if min > max {
@@ -177,12 +178,12 @@ impl KeyPair {
         }
     }
         
-    fn findE(&self, m: u64) -> u64 {
-        let mut e:u64;
+
+    fn find_e(&self, m: u64) -> u64 {
+        // let e: Vec<u64> = range(2, m);
         for n in 2..m {
-            e = rand::thread_rng().gen_range(2..m);
-            if self.Gcd(e, m) == 1 {
-                return e;
+            if self.gcd(n, m) == 1 {
+                return n;
             }
         }
         panic!("Can't Find E!!");
