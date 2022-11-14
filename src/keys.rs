@@ -2,6 +2,7 @@
     Key Pair Usage
 */
 
+
 extern crate base64;
 use base64::{encode};
 use rand::Rng;
@@ -72,6 +73,7 @@ impl Key {
 
 }
 
+
 pub struct KeyPair {
     pub skey: Key,
     pub pkey: Key
@@ -81,7 +83,7 @@ pub struct KeyPair {
 impl KeyPair {
 
     pub fn new () -> Self {
-        KeyPair {skey: Key { n: 0, exp: 0}, pkey: Key {n: 0, exp: 0}}
+        KeyPair {skey: Key { n: 3233, exp: 17}, pkey: Key {n: 3233, exp: 2753}}
 
     }
 
@@ -92,33 +94,53 @@ impl KeyPair {
 
     fn calc_exponents(&self) -> (u64, u64, u64, u64) {
         //print!("Calculating Exponents of KeyPair...");
-        let (p, q) = self.rand_init_exponents();
-        let n: u64 = q as u64 * p as u64;
-        let m: u64 = (p -1) as u64 * (q -1) as u64;
-        let e: u64 = self.find_e(m);
-        let d: u64 = (1 + n * m) / e;
+        let (p, q) = (self.rand_prime(), self.rand_prime());
+        let n: u64 = q * p;
+        let m: u64 = (q -1) * (p -1);
+        let e: u64 = self.findE(m);
+        let d = self.ext_gcd(e, m);
         println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
         (d, e, m, n)
     }
 
-    fn rand_init_exponents(&self) -> (u32, u32) {
-        let mut exps: [u32; 2] = [0 , 0];
-        let mut rng = rand::thread_rng();
-        let mut n: u32;
-        let mut i = 0;
-        
+    fn ext_gcd(&self, a: u64, b: u64) -> u64 {
+        let (mut a, mut b) = (i64::try_from(a).unwrap(), i64::try_from(b).unwrap());
+        let mut x: [i64; 2] = [0, 1];
+        let mut y: [i64; 2] = [1, 0];
+        let mut q: i64;
+        let  old_b: i64 = b;    
 
-        while i < 2 {
-            n = rng.gen_range(1..(std::u16::MAX)) as u32;
-            if self.is_prime(n as u64) {
-                exps[i] = n;
-                i+=1;
-            }
-        }        
-        print!("{} {}", exps[0], exps[1]);
-        (exps[0] , exps[1])
+        while a != 0 {
+            ((q, a), b) = ((b / a, b % a), a);
+            (y[0], y[1]) = (y[1], y[0] - q * y[1]);
+            (x[0], x[1]) = (x[1], x[0] - q * x[1]);    
+        }
+        if b != 1 {
+            panic!("gcd(a, b) != 1");
+        }
+        if x[0] < 0 {
+            x[0] = x[0] + old_b;
+        }
+        u64::try_from(x[0]).unwrap()
     }
 
+    fn rand_prime(&self) -> u64 {
+        let mut u:u64 = 0;
+        let mut n: u64 = 0;
+
+        while !self.isPrime(u) {
+            u = rand::thread_rng().gen_range(1000..3000);
+        }
+        
+        for i in (2..1000).step_by(2) {
+            n = i* u + 1;
+            if self.isPrime(n) {
+                return n;
+            }
+        }
+        panic!("RandPrime: Iteration has reached limit!!")
+    }
+    
     fn is_prime(&self, n: u64) -> bool {
         if n == 2 || n == 3 {
             return true;
@@ -156,6 +178,7 @@ impl KeyPair {
         }
     }
         
+
     fn find_e(&self, m: u64) -> u64 {
         // let e: Vec<u64> = range(2, m);
         for n in 2..m {
@@ -163,6 +186,6 @@ impl KeyPair {
                 return n;
             }
         }
-        return 1;
+        panic!("Can't Find E!!");
     }
 }
