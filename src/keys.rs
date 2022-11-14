@@ -83,7 +83,7 @@ pub struct KeyPair {
 impl KeyPair {
 
     pub fn new () -> Self {
-        KeyPair {skey: Key { n: 3233, exp: 17}, pkey: Key {n: 3233, exp: 2753}}
+        KeyPair {skey: Key { n: 3233, exp: 2753}, pkey: Key {n: 3233, exp: 17}}
 
     }
 
@@ -97,7 +97,7 @@ impl KeyPair {
         let (p, q) = (self.rand_prime(), self.rand_prime());
         let n: u64 = q * p;
         let m: u64 = (q -1) * (p -1);
-        let e: u64 = self.findE(m);
+        let e: u64 = self.find_e(m);
         let d = self.ext_gcd(e, m);
         println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
         (d, e, m, n)
@@ -126,15 +126,15 @@ impl KeyPair {
 
     fn rand_prime(&self) -> u64 {
         let mut u:u64 = 0;
-        let mut n: u64 = 0;
+        let mut n: u64;
 
-        while !self.isPrime(u) {
+        while !self.is_prime(u) {
             u = rand::thread_rng().gen_range(1000..3000);
         }
         
         for i in (2..1000).step_by(2) {
             n = i* u + 1;
-            if self.isPrime(n) {
+            if self.is_prime(n) {
                 return n;
             }
         }
