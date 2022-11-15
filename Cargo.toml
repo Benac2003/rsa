@@ -6,4 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+<<<<<<< Updated upstream
 rand = "0.8.5"
+=======
+rand = "0.8.5"
+base64 = "0.13.1"
+modpow = "1.0.1"
+num = "0.4.0"
+num-iter = "0.1.43"
+>>>>>>> Stashed changes

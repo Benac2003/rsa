@@ -3,9 +3,13 @@ pub mod keys;
 
 
 fn main() {
+<<<<<<< Updated upstream
     let pair: KeyPair = KeyPair::new().Generate();
     let t: u64 = 123;
   //  test(t);
+=======
+    let pair: KeyPair = KeyPair::new().generate(&32);
+>>>>>>> Stashed changes
 
     let n: u32 = 121;
 //    test(t);
