@@ -227,7 +227,7 @@ impl KeyPair {
     fn rand_pq(&self, mut k: u32, e: u64) -> (u64, u64) {
         k = k/2;
         let max: u64 = u64::try_from(2_u128.pow(k) - 1).unwrap();
-        let min: u64 = ((max >> 1)^max)>>2;
+        let min: u64 = (max >> 1)^max;
         let mut p: [u64;2] = [0,0];
     
         for n in 0..2{
