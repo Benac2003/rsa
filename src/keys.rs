@@ -39,34 +39,44 @@ impl Key {
         encode(&bytes)
     }
 
-    pub fn encrypt_bytes(&self, bytes: Vec<u8>) -> Vec<u8> {
-        println!("original chars: {:X?}", bytes);
+    pub fn decrypt_str(&self, s: String) -> String {
+        let cipher = decode(s).unwrap();
+        let bytes = self.decrypt_bytes(cipher);
 
-        let mut words: Vec<u64> = Vec::new();
+        String::from_utf8(bytes).unwrap()
+    }
+
+    pub fn encrypt_bytes(&self, bytes: Vec<u8>) -> Vec<u8> {
+        /* Encrypts 64-bit chunks and returns Vec<u8> */
+
+        println!("original chars: {:X?}", bytes);
     
         // Build a vector of encrypted words
-        let mut buff: u64 = 0;
-        for (i, byte) in bytes.iter().enumerate() {
-            buff |= (*byte as u64) << ((3-(i%4))*8);
-            if (3 - (i % 4)) == 0 || i == (bytes.len() - 1) { // every forth byte...
-                words.push(buff); // encrypt 64-bit word and push to words
-                buff = 0; // reset buffer
-            }
+        /*
+        */
+
+        let mut words: Vec<u64> = Vec::new();
+        for byte in &bytes {
+            words.push(*byte as u64);
         }
 
-        println!("original words: {:X?}", words);
+        println!("original words: {:#010x?}", words);
+
+        // Encrypt each word
         for word in &mut words {
             *word = self.encrypt64(*word);
         }
-        println!("encrypted words {:X?}", words);
+        
+        println!("encrypted words {:#010x?}", words);
 
+        // Unpack into encrypted u8 array
         let mut chars: Vec<u8> = Vec::with_capacity(words.len()*4);
         let mut temp8: u8;
         for (i, word) in words.iter().enumerate() {
-            for n in 0..4 {
+            for n in 0..8 {
                 chars.push(0);
-                temp8 = ((*word & (0xFF << ((3-n)*8))) >> ((3-n)*8)) as u8;
-                chars[i*4 + n] = temp8;
+                temp8 = ((*word & (0xFF << ((7-n)*8))) >> ((7-n)*8)) as u8;
+                chars[i*8 + n] = temp8;
             }
         }
 
@@ -75,17 +85,35 @@ impl Key {
         return chars;
     }
 
-    pub fn decrypt_str(&self, s: String) -> String {
-        let cipher = decode(s).unwrap();
+    pub fn decrypt_bytes(&self, bytes: Vec<u8>) -> Vec<u8> {
 
-        let _bytes = self.encrypt_bytes(cipher);
+        println!("original bytes: {:X?}", bytes);
 
-        String::from("pass")
-    }
+        // Chunk bytes into 64-bit words
+        let mut words: Vec<u64> = Vec::new();
+        let mut buff: u64 = 0;
+        for (i, byte) in bytes.iter().enumerate() {
+            buff |= (*byte as u64) << ((7-(i%8))*8);
+            if (7 - (i % 8)) == 0 || i == (bytes.len() - 1) { // every fourth byte...
+                words.push(buff); // push to words
+                buff = 0; // reset buffer
+            }
+        }
 
-    pub fn decrypt64(&self, t: u64) -> u64 {
-        self.encrypt64(t)
-    }
+        println!("original words: {:#10X?}", words);
+
+        // Decrypt each word and extract characters
+        let mut chars: Vec<u8> = Vec::new();
+        for word in &mut words {
+            *word = self.decrypt64(*word);
+            chars.push((*word & 0xFF) as u8);
+        }
+
+        println!("decrypted words: {:#10X?}", words);
+        println!("decrypted chars: {:X?}", chars);
+
+        return chars;
+    } 
 
     pub fn encrypt64(&self, t: u64) -> u64 {
         let exp_table:[u64; 64] = self.gen_table(t);
@@ -93,12 +121,17 @@ impl Key {
         let mut idx: u64 = self.exp;
         for i in 0..64 {
             if (idx & 1) == 1 {
-                acc = (acc * exp_table[i] as u128) % self.n as u128;
+                acc = (acc * exp_table[i] as u128) % (self.n as u128);
             }
             idx = idx >> 1;
         }
 
+        assert!(acc < std::u64::MAX as u128);
         acc as u64
+    }
+
+    pub fn decrypt64(&self, t: u64) -> u64 {
+        self.encrypt64(t)
     }
 
     fn gen_table(&self, t: u64) -> [u64; 64] {
