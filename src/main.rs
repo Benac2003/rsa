@@ -1,17 +1,46 @@
-use crate::keys::{KeyPair};
 pub mod keys;
-
+use crate::keys::{KeyPair, Key};
+use std::io::{self, Write, BufRead};
 
 fn main() {
-    let pair: KeyPair = KeyPair::new().generate();
+    let pair = KeyPair::new();
+    
+    // Test number below 3233
+    let mut hex: u64 = 0x00000C9F;
+    print!("Num Test 1: {:X} -> ", hex);
+    print!("{:X} -> ", pair.pkey.encrypt64(hex));
+    print!("{:X}    PASS\n", pair.skey.encrypt64(pair.pkey.encrypt64(hex)));
 
-    let a: u64 = 855;
+    // Test number above 3233
+    hex = 0x0036449e;
+    print!("Num Test 2: {:X} -> ", hex);
+    print!("{:X} -> ", pair.pkey.encrypt64(hex));
+    print!("{:X}    FAIL\n\n", pair.skey.encrypt64(pair.pkey.encrypt64(hex)));
 
-    let b: u64 = pair.pkey.encrypt64(a);
+    // Write keys to file
+    pair.pkey.write_to_file("rsa.pem.pub");
+    pair.skey.write_to_file("rsa.pem");
+    println!("Saved keys to disk.\n");
 
-    let c: u64 = pair.skey.decrypt64(b);
+    // Ask for input
+    print!("Enter text to encrypt: ");
+    io::stdout().flush().unwrap();
+    let mut encrypted: String = String::new();
+    for line in io::stdin().lock().lines() {
+        let data: String = line.unwrap();
+        println!("{:?}", data);
+        encrypted = pair.pkey.encrypt_str(data);
+        println!("Result: {}", encrypted);
+        break;
+    }
 
-    print!(" {}\n", a == c);
+    // Test reading key from file
+    let key_from_file: Key = Key::from_file("rsa.pub");
+
+    // Test decryption
+    println!("Decrypting result...");
+    let decrypted = key_from_file.decrypt_str(encrypted);
+    println!("Final message: \n\n{}\n", decrypted);
 
 }
 

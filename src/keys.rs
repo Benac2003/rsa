@@ -2,6 +2,11 @@
     Key Pair Usage
 */
 
+
+extern crate base64;
+use base64::{encode, decode};
+use std::io::{Write, Read};
+use std::fs::{File};
 use rand::Rng;
 
 pub struct Key {
@@ -10,55 +15,123 @@ pub struct Key {
 }
 
 impl Key {
+
+    pub fn from_file(filename: &str) -> Self {
+        let mut keyfile = File::open(filename).ok().expect("Key File not found.");
+        let mut keystring = String::new();
+        let _read_bytes = keyfile.read_to_string(&mut keystring).ok();
+        let keybytes = decode(keystring).unwrap();
+
+
+        let mut expbytes: [u8; 8] = [0; 8];
+        expbytes.clone_from_slice(&keybytes[0..8]);
+        let exp: u64 = u64::from_ne_bytes(expbytes);
+
+        let mut modbytes: [u8; 8] = [0; 8];
+        modbytes.clone_from_slice(&keybytes[8..16]);
+        let n: u64 = u64::from_ne_bytes(modbytes);
+
+        Key { n, exp }
+    }
     
     pub fn encrypt_str(&self, s: String) -> String {
-        let mut bytes = s.into_bytes();
-        let mut result: Vec<u64> = Vec::new();
+        let bytes = self.encrypt_bytes(s.into_bytes());
+        encode(&bytes)
+    }
+
+    pub fn decrypt_str(&self, s: String) -> String {
+        let cipher = decode(s).unwrap();
+        let bytes = self.decrypt_bytes(cipher);
+
+        String::from_utf8(bytes).unwrap()
+    }
+
+    pub fn encrypt_bytes(&self, bytes: Vec<u8>) -> Vec<u8> {
+        /* Encrypts 64-bit chunks and returns Vec<u8> */
+
+        println!("original chars: {:X?}", bytes);
     
-        let mut temp: u64;
+        // Build a vector of encrypted words
+        /*
+        */
+
+        let mut words: Vec<u64> = Vec::new();
+        for byte in &bytes {
+            words.push(*byte as u64);
+        }
+
+        println!("original words: {:#010x?}", words);
+
+        // Encrypt each word
+        for word in &mut words {
+            *word = self.encrypt64(*word);
+        }
+        
+        println!("encrypted words {:#010x?}", words);
+
+        // Unpack into encrypted u8 array
+        let mut chars: Vec<u8> = Vec::with_capacity(words.len()*4);
+        let mut temp8: u8;
+        for (i, word) in words.iter().enumerate() {
+            for n in 0..8 {
+                chars.push(0);
+                temp8 = ((*word & (0xFF << ((7-n)*8))) >> ((7-n)*8)) as u8;
+                chars[i*8 + n] = temp8;
+            }
+        }
+
+        println!("encrypted chars: {:X?}", chars);
+
+        return chars;
+    }
+
+    pub fn decrypt_bytes(&self, bytes: Vec<u8>) -> Vec<u8> {
+
+        println!("original bytes: {:X?}", bytes);
+
+        // Chunk bytes into 64-bit words
+        let mut words: Vec<u64> = Vec::new();
         let mut buff: u64 = 0;
         for (i, byte) in bytes.iter().enumerate() {
-            //println!("{:#X}", *byte);
-            temp = (*byte as u64) << ((3-(i%4))*8);
-            //println!("{:#X}", temp);
-            buff = temp | buff;
-            //println!("buff: {:#X}", buff);
-            if (3-(i%4)) == 0 {
-                result.push(self.encrypt64(buff));
-                buff = 0;
+            buff |= (*byte as u64) << ((7-(i%8))*8);
+            if (7 - (i % 8)) == 0 || i == (bytes.len() - 1) { // every fourth byte...
+                words.push(buff); // push to words
+                buff = 0; // reset buffer
             }
         }
 
-        let mut temp8: u8;
-        for (i, word) in result.iter_mut().enumerate() {
-            for n in 0..3 {
-                temp8 = ((*word & (0xFF << ((3-n)*8))) >> ((3-n)*8)) as u8;
-                println!("{:X}", temp8);
-                bytes[i*4 + n] = temp8;
-            }
+        println!("original words: {:#10X?}", words);
+
+        // Decrypt each word and extract characters
+        let mut chars: Vec<u8> = Vec::new();
+        for word in &mut words {
+            *word = self.decrypt64(*word);
+            chars.push((*word & 0xFF) as u8);
         }
 
-        println!("{:X?}", bytes);
-        
-        String::from_utf8(bytes).ok().expect("Failed to convert to UTF8.")
-    }
+        println!("decrypted words: {:#10X?}", words);
+        println!("decrypted chars: {:X?}", chars);
 
-    pub fn decrypt64(&self, t: u64) -> u64 {
-        self.encrypt64(t)
-    }
+        return chars;
+    } 
 
     pub fn encrypt64(&self, t: u64) -> u64 {
         let exp_table:[u64; 64] = self.gen_table(t);
-        let mut acc: u64 = 1;
+        let mut acc: u128 = 1;
         let mut idx: u64 = self.exp;
         for i in 0..64 {
             if (idx & 1) == 1 {
-                acc = (acc * exp_table[i]) % self.n;
+                acc = (acc * exp_table[i] as u128) % (self.n as u128);
             }
             idx = idx >> 1;
         }
 
-        acc
+        assert!(acc < std::u64::MAX as u128);
+        acc as u64
+    }
+
+    pub fn decrypt64(&self, t: u64) -> u64 {
+        self.encrypt64(t)
     }
 
     fn gen_table(&self, t: u64) -> [u64; 64] {
@@ -67,10 +140,33 @@ impl Key {
         for i in 1..64 {
             table[i] = (table[i-1].pow(2)) % self.n;
         }
-        table
+        return table;
     }
 
+    pub fn write_to_file(&self, filename: &str) -> usize {
+        // let mut keyfile = base64::write::EncoderWriter::new(File::create(filename).unwrap(), base64::STANDARD);
+        let mut keyfile = File::create(filename).ok().expect("Filepath incorrect.");
+        keyfile.write(&mut self.dump_key_base64().as_bytes()).unwrap()
+    }
+
+    pub fn dump_key_bytes(&self) -> [u8; 16] {
+        let expbytes: [u8; 8 * 1] = self.exp.to_ne_bytes();
+        let modbytes: [u8; 8 * 1] = self.n.to_ne_bytes();
+
+        let mut keybytes: [u8; 8 * 2] = [0; 8 * 2];
+        keybytes[0..8].copy_from_slice(&expbytes);
+        keybytes[8..].copy_from_slice(&modbytes);
+
+        keybytes
+    }
+
+    pub fn dump_key_base64(&self) -> String {
+        encode(&self.dump_key_bytes())
+    }
+
+
 }
+
 
 pub struct KeyPair {
     pub skey: Key,
@@ -81,7 +177,7 @@ pub struct KeyPair {
 impl KeyPair {
 
     pub fn new () -> Self {
-        KeyPair {skey: Key { n: 0, exp: 0}, pkey: Key {n: 0, exp: 0}}
+        KeyPair {skey: Key { n: 3233, exp: 2753}, pkey: Key {n: 3233, exp: 17}}
 
     }
 
@@ -92,33 +188,53 @@ impl KeyPair {
 
     fn calc_exponents(&self) -> (u64, u64, u64, u64) {
         //print!("Calculating Exponents of KeyPair...");
-        let (p, q) = self.rand_init_exponents();
-        let n: u64 = q as u64 * p as u64;
-        let m: u64 = (p -1) as u64 * (q -1) as u64;
+        let (p, q) = (self.rand_prime(), self.rand_prime());
+        let n: u64 = q * p;
+        let m: u64 = (q -1) * (p -1);
         let e: u64 = self.find_e(m);
-        let d: u64 = (1 + n * m) / e;
+        let d = self.ext_gcd(e, m);
         println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
         (d, e, m, n)
     }
 
-    fn rand_init_exponents(&self) -> (u32, u32) {
-        let mut exps: [u32; 2] = [0 , 0];
-        let mut rng = rand::thread_rng();
-        let mut n: u32;
-        let mut i = 0;
-        
+    fn ext_gcd(&self, a: u64, b: u64) -> u64 {
+        let (mut a, mut b) = (i64::try_from(a).unwrap(), i64::try_from(b).unwrap());
+        let mut x: [i64; 2] = [0, 1];
+        let mut y: [i64; 2] = [1, 0];
+        let mut q: i64;
+        let  old_b: i64 = b;    
 
-        while i < 2 {
-            n = rng.gen_range(1..(std::u16::MAX)) as u32;
-            if self.is_prime(n as u64) {
-                exps[i] = n;
-                i+=1;
-            }
-        }        
-        print!("{} {}", exps[0], exps[1]);
-        (exps[0] , exps[1])
+        while a != 0 {
+            ((q, a), b) = ((b / a, b % a), a);
+            (y[0], y[1]) = (y[1], y[0] - q * y[1]);
+            (x[0], x[1]) = (x[1], x[0] - q * x[1]);    
+        }
+        if b != 1 {
+            panic!("gcd(a, b) != 1");
+        }
+        if x[0] < 0 {
+            x[0] = x[0] + old_b;
+        }
+        u64::try_from(x[0]).unwrap()
     }
 
+    fn rand_prime(&self) -> u64 {
+        let mut u:u64 = 0;
+        let mut n: u64;
+
+        while !self.is_prime(u) {
+            u = rand::thread_rng().gen_range(1000..3000);
+        }
+        
+        for i in (2..1000).step_by(2) {
+            n = i* u + 1;
+            if self.is_prime(n) {
+                return n;
+            }
+        }
+        panic!("RandPrime: Iteration has reached limit!!")
+    }
+    
     fn is_prime(&self, n: u64) -> bool {
         if n == 2 || n == 3 {
             return true;
@@ -156,6 +272,7 @@ impl KeyPair {
         }
     }
         
+
     fn find_e(&self, m: u64) -> u64 {
         // let e: Vec<u64> = range(2, m);
         for n in 2..m {
@@ -163,6 +280,6 @@ impl KeyPair {
                 return n;
             }
         }
-        return 1;
+        panic!("Can't Find E!!");
     }
 }
