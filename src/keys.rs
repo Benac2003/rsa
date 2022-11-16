@@ -5,14 +5,10 @@
 
 extern crate base64;
 use base64::{encode, decode};
+use core::panic;
 use std::io::{Write, Read};
 use std::fs::{File};
 use rand::Rng;
-
-extern crate base64;
-
-use base64::{encode};
-
 
 pub struct Key {
     pub n: u64,
@@ -188,17 +184,18 @@ impl KeyPair {
 
     pub fn generate(&self, k: &u32) -> Self {
         let (d, e, _m, n) = self.calc_exponents(k);
-        KeyPair {skey: Key { n, exp: e}, pkey: Key {n, exp: d}}
+        KeyPair {skey: Key { n, exp: d}, pkey: Key {n, exp: e}}
     }
 
     fn calc_exponents(&self, k: &u32) -> (u64, u64, u64, u64) {
         //print!("Calculating Exponents of KeyPair...");
         let e: u64 = self.rand_e();
         let (p, q) = self.rand_pq(*k, e);
-        let n: u64 = q * p;
+        let n: u64 = q * p; 
         let m: u64 = (p -1) * (q -1);
         let d = self.ext_gcd(e, m);
-        println!("\nCalculated Exponents:\nd: {}\ne: {}\nm: {}\nn: {}", d, e, m, n);
+        println!("\nKeyPair Length: {}\nKey Len: {}\n", k*2, k);
+        println!("\nCalculated Exponents:\np: {}\nq: {}\nd: {}\ne: {}\nm: {}\nn: {}\n", p, q, d, e, m, n);
         (d, e, m, n)
     }
 
@@ -225,6 +222,9 @@ impl KeyPair {
     }
 
     fn rand_pq(&self, mut k: u32, e: u64) -> (u64, u64) {
+        if k > 32 {
+            panic!("Key Bit-Length is too long, must be <=32")
+        }
         k = k/2;
         let max: u64 = u64::try_from(2_u128.pow(k) - 1).unwrap();
         let min: u64 = (max >> 1)^max;
